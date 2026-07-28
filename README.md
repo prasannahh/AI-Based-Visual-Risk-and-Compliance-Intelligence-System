@@ -290,7 +290,10 @@ streamlit run app.py
 **Domain:** Artificial Intelligence | Machine Learning | Healthcare
 
 **Developed By**
-
+Prasanna Sankar B
+chitrita Bhattacharjee
+Gadde Rohit Kumar Yadhav
+Shraddha Vadar
 
 ---
 
