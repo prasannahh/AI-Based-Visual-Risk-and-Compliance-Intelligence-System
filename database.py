@@ -62,6 +62,8 @@ class User(Base):
     predictions = relationship("Prediction", back_populates="user", cascade="all, delete-orphan")
     simulations = relationship("Simulation", back_populates="user", cascade="all, delete-orphan")
     recommendations = relationship("Recommendation", back_populates="user", cascade="all, delete-orphan")
+    health_record = relationship("HealthRecord", back_populates="user", uselist=False,
+                                   cascade="all, delete-orphan")
 
 
 class DailyLog(Base):
@@ -137,6 +139,24 @@ class Recommendation(Base):
     recommendation_text = Column(Text)
 
     user = relationship("User", back_populates="recommendations")
+
+
+class HealthRecord(Base):
+    """One row per user -- detailed medical background, editable any time
+    from the Health Records page (separate from the free-text `medical_history`
+    field on the profile, which is a quick summary)."""
+    __tablename__ = "health_records"
+
+    health_record_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    allergies = Column(Text)
+    chronic_conditions = Column(Text)
+    current_medications = Column(Text)
+    past_surgeries = Column(Text)
+
+    user = relationship("User", back_populates="health_record")
 
 
 def init_db():

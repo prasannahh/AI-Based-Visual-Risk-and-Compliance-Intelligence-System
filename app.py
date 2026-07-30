@@ -17,13 +17,14 @@ Pages (mirrors the 6 modules from the project plan):
 """
 
 from datetime import date, timedelta
+import secrets
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from sqlalchemy import select, func
 
-from database import init_db, get_session, User, DailyLog, Prediction, Simulation, Recommendation
+from database import init_db, get_session, User, DailyLog, Prediction, Simulation, Recommendation, HealthRecord
 from ml.bmi import calculate_bmi, bmi_category, calculate_bmr, calculate_tdee
 from ml.weight_predictor import predict_weight_change
 from ml.fitness_score import calculate_fitness_score
@@ -33,10 +34,125 @@ from simulation import run_simulation, compare_scenarios
 from recommendations import generate_recommendations
 from chatbot import get_chatbot_response
 from utils import hash_password, verify_password
-from style import inject_custom_css, hero_header, render_footer, risk_badge
+from style import (
+    inject_custom_css, hero_header, render_footer, risk_badge,
+    inject_auth_theme, auth_topbar, auth_heading, auth_footnote, style_chart,
+)
 
 st.set_page_config(page_title="Health & Fitness Digital Twin", page_icon="🩺", layout="wide")
+
+# Single unified dark/teal theme, used on every screen.
 inject_custom_css()
+
+# ---------------------------------------------------------------------------
+# Session persistence across full page reloads.
+#
+# Clicking a plain <a href="..."> link (like the footer's About/Privacy/
+# Contact) makes the BROWSER navigate, which starts a brand new Streamlit
+# session -- st.session_state resets, logging the user out. To survive that,
+# a random token is generated at login, mapped to the user's id in this
+# in-memory store, and carried along in the URL's ?session= query param so
+# it can be used to silently restore the login after a full reload.
+#
+# Note: this store lives in the running Python process's memory. It's reset
+# if you restart `streamlit run`, and (for a from-scratch project like this)
+# assumes a single server process -- which is exactly how `streamlit run
+# app.py` runs locally. That's a reasonable tradeoff here to avoid needing
+# an external session store just to keep footer links from logging people out.
+# ---------------------------------------------------------------------------
+@st.cache_resource
+def _get_session_store():
+    """A dict that persists for the lifetime of the running `streamlit run`
+    process, shared across every browser session -- Streamlit's documented
+    way to keep server-side state alive across reruns (unlike a plain
+    module-level variable, which gets reset every time the script re-executes)."""
+    return {}
+
+
+_SESSION_STORE = _get_session_store()
+
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "session_token" not in st.session_state:
+    st.session_state.session_token = None
+
+_qp_session = st.query_params.get("session")
+if st.session_state.user_id is None and _qp_session and _qp_session in _SESSION_STORE:
+    st.session_state.user_id = _SESSION_STORE[_qp_session]
+    st.session_state.session_token = _qp_session
+
+# ---------------------------------------------------------------------------
+# About / Privacy / Contact -- reached via the footer links (?page=...).
+# Rendered before DB init since these are static pages that don't need it.
+# ---------------------------------------------------------------------------
+INFO_PAGES = {
+    "about": (
+        "About This Project",
+        """
+Health & Fitness Digital Twin is an AI-powered virtual model of your health.
+It combines daily habit tracking, machine learning predictions, and a
+"what-if" simulation engine to help you understand how today's choices
+shape tomorrow's outcomes.
+
+**What it does:**
+- Builds a personal digital twin from the habits you log
+- Forecasts weight, BMI, and a composite fitness score
+- Estimates obesity / diabetes / hypertension risk levels
+- Lets you simulate lifestyle changes before committing to them
+- Offers an AI chat assistant for quick questions about your data
+
+Built with Streamlit, PostgreSQL, and scikit-learn, as an educational
+project -- not a medical device.
+""",
+    ),
+    "privacy": (
+        "Privacy",
+        """
+**What we store:** your profile (name, email, age, height, weight, goal),
+the daily health data you log, and any predictions or recommendations you
+choose to save. All of it lives in your own PostgreSQL database -- nothing
+is sent to a third party, except:
+
+- If you set an `OPENAI_API_KEY`, the text of your AI Assistant questions
+  (plus a short summary of your latest stats) is sent to OpenAI to generate
+  a response. Without a key, the assistant runs fully offline.
+
+**Passwords** are never stored in plain text -- they're hashed with bcrypt.
+Your security question answer (used for password recovery) is hashed the
+same way.
+
+**Your data, your database.** Since this runs on your own machine against
+your own PostgreSQL instance, you're in full control of backing up,
+exporting, or deleting it at any time.
+""",
+    ),
+    "contact": (
+        "Contact",
+        """
+This is a personal / educational project template, not a hosted product
+with a support team -- so there's no live contact form. A few pointers
+instead:
+
+- **Found a bug or want a feature?** Check the project's `README.md` for
+  the codebase layout, then modify the relevant file directly (it's your
+  copy of the code).
+- **Questions about the ML models?** See the "How the ML actually works"
+  section of the README for the algorithms and datasets used.
+- **Medical concerns?** Please talk to a qualified healthcare professional
+  -- this app is educational, not diagnostic.
+""",
+    ),
+}
+
+_qp_page = st.query_params.get("page")
+if _qp_page in INFO_PAGES:
+    title, body = INFO_PAGES[_qp_page]
+    hero_header(title, "Health & Fitness Digital Twin")
+    st.markdown(body)
+    _back_href = f"?session={st.session_state.session_token}" if st.session_state.session_token else "?"
+    st.markdown(f'<a href="{_back_href}" target="_self">&larr; Back to the app</a>', unsafe_allow_html=True)
+    render_footer(st.session_state.session_token)
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # DB init (safe to call every run -- CREATE TABLE IF NOT EXISTS style)
@@ -68,154 +184,158 @@ SECURITY_QUESTIONS = [
 
 
 def login_register_screen():
-    hero_header(
-        "🩺 Health & Fitness Digital Twin",
-        "An AI-powered virtual model of your health — predict, simulate, and improve.",
-    )
+    left, center, right = st.columns([1, 1.6, 1])
 
-    tab_login, tab_register, tab_forgot = st.tabs(["🔑 Log In", "📝 Register", "❓ Forgot Password"])
+    with center:
+        auth_topbar("HEALTH &amp; FITNESS DIGITAL TWIN")
 
-    # ---------------- LOG IN ----------------
-    with tab_login:
-        with st.form("login_form"):
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Log In")
-        if submitted:
-            if not email or not password:
-                st.error("Please enter both email and password.")
-            else:
-                with get_session() as session:
-                    user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
-                if user and verify_password(password, user.password_hash):
-                    st.session_state.user_id = user.user_id
-                    st.success(f"Welcome back, {user.name.split(' ')[0]}!")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid email or password. Please try again.")
+        tab_login, tab_register, tab_forgot = st.tabs(["Log In", "Register", "Forgot Password"])
 
-    # ---------------- REGISTER ----------------
-    with tab_register:
-        with st.form("register_form"):
-            st.markdown("**Account details**")
-            name = st.text_input("Full name")
-            email = st.text_input("Email", key="reg_email")
-            c1, c2 = st.columns(2)
-            with c1:
-                password = st.text_input("Password", type="password", key="reg_pw")
-            with c2:
-                confirm_password = st.text_input("Confirm password", type="password", key="reg_pw2")
-
-            st.markdown("**Profile**")
-            c3, c4 = st.columns(2)
-            with c3:
-                age = st.number_input("Age", 10, 100, 25)
-                height_cm = st.number_input("Height (cm)", 100.0, 250.0, 170.0)
-            with c4:
-                gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-                weight_kg = st.number_input("Weight (kg)", 30.0, 250.0, 70.0)
-            blood_group = st.selectbox(
-                "Blood group", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"]
-            )
-            fitness_goal = st.selectbox(
-                "Fitness goal", ["weight_loss", "muscle_gain", "endurance", "maintenance"]
-            )
-            medical_history = st.text_area("Medical history / allergies (optional)")
-
-            st.markdown("**Account recovery** (used for Forgot Password)")
-            c5, c6 = st.columns(2)
-            with c5:
-                security_question = st.selectbox("Security question", SECURITY_QUESTIONS)
-            with c6:
-                security_answer = st.text_input("Your answer")
-
-            submitted = st.form_submit_button("Create account")
-
-        if submitted:
-            if not name or not email or not password:
-                st.error("Name, email, and password are required.")
-            elif password != confirm_password:
-                st.error("Passwords don't match.")
-            elif len(password) < 6:
-                st.error("Password must be at least 6 characters.")
-            elif not security_answer:
-                st.error("Please answer the security question (needed for password recovery).")
-            else:
-                with get_session() as session:
-                    existing = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
-                    if existing:
-                        st.error("An account with that email already exists.")
-                    else:
-                        new_user = User(
-                            name=name, email=email, password_hash=hash_password(password),
-                            age=int(age), gender=gender, height_cm=height_cm, weight_kg=weight_kg,
-                            blood_group=blood_group, fitness_goal=fitness_goal,
-                            medical_history=medical_history,
-                            security_question=security_question,
-                            security_answer_hash=hash_password(security_answer.strip().lower()),
-                        )
-                        session.add(new_user)
-                        session.commit()
-                        st.success("🎉 Account created! Please log in from the 'Log In' tab.")
-
-    # ---------------- FORGOT PASSWORD ----------------
-    with tab_forgot:
-        st.caption("Verify your identity with your security question, then set a new password.")
-
-        if "forgot_pw_stage" not in st.session_state:
-            st.session_state.forgot_pw_stage = "lookup"
-            st.session_state.forgot_pw_user_id = None
-
-        if st.session_state.forgot_pw_stage == "lookup":
-            with st.form("forgot_lookup_form"):
-                fp_email = st.text_input("Your account email")
-                lookup_submitted = st.form_submit_button("Continue")
-            if lookup_submitted:
-                with get_session() as session:
-                    user = session.execute(select(User).where(User.email == fp_email)).scalar_one_or_none()
-                if user is None:
-                    st.error("No account found with that email.")
-                else:
-                    st.session_state.forgot_pw_stage = "verify"
-                    st.session_state.forgot_pw_user_id = user.user_id
-                    st.session_state.forgot_pw_question = user.security_question
-                    st.rerun()
-
-        elif st.session_state.forgot_pw_stage == "verify":
-            st.info(f"Security question: **{st.session_state.forgot_pw_question}**")
-            with st.form("forgot_verify_form"):
-                answer = st.text_input("Your answer")
-                new_password = st.text_input("New password", type="password")
-                confirm_new_password = st.text_input("Confirm new password", type="password")
-                c1, c2 = st.columns(2)
-                with c1:
-                    verify_submitted = st.form_submit_button("Reset Password")
-                with c2:
-                    cancel = st.form_submit_button("Cancel")
-
-            if cancel:
-                st.session_state.forgot_pw_stage = "lookup"
-                st.session_state.forgot_pw_user_id = None
-                st.rerun()
-
-            if verify_submitted:
-                if new_password != confirm_new_password:
-                    st.error("New passwords don't match.")
-                elif len(new_password) < 6:
-                    st.error("Password must be at least 6 characters.")
+        # ---------------- LOG IN ----------------
+        with tab_login:
+            auth_heading("WELCOME", "BACK", "Sign in to access your Twin.")
+            with st.form("login_form"):
+                email = st.text_input("Email", placeholder="Email or Username")
+                password = st.text_input("Password", type="password", placeholder="Password")
+                submitted = st.form_submit_button("LOG IN")
+            if submitted:
+                if not email or not password:
+                    st.error("Please enter both email and password.")
                 else:
                     with get_session() as session:
-                        user = get_user(session, st.session_state.forgot_pw_user_id)
-                        if not verify_password(answer.strip().lower(), user.security_answer_hash):
-                            st.error("❌ That answer doesn't match our records.")
-                        else:
-                            user.password_hash = hash_password(new_password)
-                            session.commit()
-                            st.success("✅ Password reset! You can now log in with your new password.")
-                            st.session_state.forgot_pw_stage = "lookup"
-                            st.session_state.forgot_pw_user_id = None
+                        user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
+                    if user and verify_password(password, user.password_hash):
+                        token = secrets.token_urlsafe(16)
+                        _SESSION_STORE[token] = user.user_id
+                        st.session_state.user_id = user.user_id
+                        st.session_state.session_token = token
+                        st.query_params["session"] = token
+                        st.success(f"Welcome back, {user.name.split(' ')[0]}!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid email or password. Please try again.")
+            auth_footnote("New to your Digital Twin? Use the <b>Register</b> tab above.")
 
-    render_footer()
+        # ---------------- REGISTER ----------------
+        with tab_register:
+            auth_heading("CREATE YOUR", "DIGITAL TWIN", "Build your personalized AI health model.")
+            with st.form("register_form"):
+                name = st.text_input("Full name", placeholder="Full Name")
+                email = st.text_input("Email", key="reg_email", placeholder="Email Address")
+                c1, c2 = st.columns(2)
+                with c1:
+                    password = st.text_input("Password", type="password", key="reg_pw", placeholder="Create Password")
+                with c2:
+                    confirm_password = st.text_input("Confirm password", type="password", key="reg_pw2", placeholder="Confirm Password")
+
+                st.caption("PROFILE")
+                c3, c4 = st.columns(2)
+                with c3:
+                    age = st.number_input("Age", 10, 100, 25)
+                    height_cm = st.number_input("Height (cm)", 100.0, 250.0, 170.0)
+                with c4:
+                    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+                    weight_kg = st.number_input("Weight (kg)", 30.0, 250.0, 70.0)
+                blood_group = st.selectbox(
+                    "Blood group", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"]
+                )
+                fitness_goal = st.selectbox(
+                    "Fitness goal", ["weight_loss", "muscle_gain", "endurance", "maintenance"]
+                )
+                medical_history = st.text_area("Medical history / allergies (optional)")
+
+                st.caption("ACCOUNT RECOVERY -- used for Forgot Password")
+                security_question = st.selectbox("Security question", SECURITY_QUESTIONS)
+                security_answer = st.text_input("Your answer", placeholder="Your answer")
+
+                submitted = st.form_submit_button("REGISTER")
+
+            if submitted:
+                if not name or not email or not password:
+                    st.error("Name, email, and password are required.")
+                elif password != confirm_password:
+                    st.error("Passwords don't match.")
+                elif len(password) < 6:
+                    st.error("Password must be at least 6 characters.")
+                elif not security_answer:
+                    st.error("Please answer the security question (needed for password recovery).")
+                else:
+                    with get_session() as session:
+                        existing = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
+                        if existing:
+                            st.error("An account with that email already exists.")
+                        else:
+                            new_user = User(
+                                name=name, email=email, password_hash=hash_password(password),
+                                age=int(age), gender=gender, height_cm=height_cm, weight_kg=weight_kg,
+                                blood_group=blood_group, fitness_goal=fitness_goal,
+                                medical_history=medical_history,
+                                security_question=security_question,
+                                security_answer_hash=hash_password(security_answer.strip().lower()),
+                            )
+                            session.add(new_user)
+                            session.commit()
+                            st.success("🎉 Account created! Please log in from the 'Log In' tab.")
+            auth_footnote("Already have an account? Use the <b>Log In</b> tab above.")
+
+        # ---------------- FORGOT PASSWORD ----------------
+        with tab_forgot:
+            if "forgot_pw_stage" not in st.session_state:
+                st.session_state.forgot_pw_stage = "lookup"
+                st.session_state.forgot_pw_user_id = None
+
+            if st.session_state.forgot_pw_stage == "lookup":
+                auth_heading("RESET YOUR", "PASSWORD",
+                              "Don't worry, it happens! Enter your registered email to continue.")
+                with st.form("forgot_lookup_form"):
+                    fp_email = st.text_input("Your account email", placeholder="Email Address")
+                    lookup_submitted = st.form_submit_button("CONTINUE")
+                if lookup_submitted:
+                    with get_session() as session:
+                        user = session.execute(select(User).where(User.email == fp_email)).scalar_one_or_none()
+                    if user is None:
+                        st.error("No account found with that email.")
+                    else:
+                        st.session_state.forgot_pw_stage = "verify"
+                        st.session_state.forgot_pw_user_id = user.user_id
+                        st.session_state.forgot_pw_question = user.security_question
+                        st.rerun()
+
+            elif st.session_state.forgot_pw_stage == "verify":
+                auth_heading("VERIFY YOUR", "IDENTITY",
+                              f"Security question: {st.session_state.forgot_pw_question}")
+                with st.form("forgot_verify_form"):
+                    answer = st.text_input("Your answer", placeholder="Your answer")
+                    new_password = st.text_input("New password", type="password", placeholder="New password")
+                    confirm_new_password = st.text_input("Confirm new password", type="password", placeholder="Confirm new password")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        verify_submitted = st.form_submit_button("RESET PASSWORD")
+                    with c2:
+                        cancel = st.form_submit_button("CANCEL")
+
+                if cancel:
+                    st.session_state.forgot_pw_stage = "lookup"
+                    st.session_state.forgot_pw_user_id = None
+                    st.rerun()
+
+                if verify_submitted:
+                    if new_password != confirm_new_password:
+                        st.error("New passwords don't match.")
+                    elif len(new_password) < 6:
+                        st.error("Password must be at least 6 characters.")
+                    else:
+                        with get_session() as session:
+                            user = get_user(session, st.session_state.forgot_pw_user_id)
+                            if not verify_password(answer.strip().lower(), user.security_answer_hash):
+                                st.error("❌ That answer doesn't match our records.")
+                            else:
+                                user.password_hash = hash_password(new_password)
+                                session.commit()
+                                st.success("✅ Password reset! You can now log in with your new password.")
+                                st.session_state.forgot_pw_stage = "lookup"
+                                st.session_state.forgot_pw_user_id = None
+            auth_footnote("Remembered it? Use the <b>Log In</b> tab above.")
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +444,80 @@ def page_profile_and_log(user):
 
 
 # ---------------------------------------------------------------------------
+# Page: Health Records
+# ---------------------------------------------------------------------------
+def page_health_records(user):
+    st.header("🏥 Health Records")
+    st.caption(
+        "Detailed medical background -- separate from the quick summary on your "
+        "profile. One record per account; saving here updates it (it never "
+        "creates duplicates)."
+    )
+
+    with get_session() as session:
+        record = session.execute(
+            select(HealthRecord).where(HealthRecord.user_id == user.user_id)
+        ).scalar_one_or_none()
+
+        existing = {
+            "allergies": record.allergies if record else "",
+            "chronic_conditions": record.chronic_conditions if record else "",
+            "current_medications": record.current_medications if record else "",
+            "past_surgeries": record.past_surgeries if record else "",
+        }
+        last_updated = record.updated_at if record else None
+
+    if last_updated:
+        st.caption(f"Last updated: {last_updated.strftime('%Y-%m-%d %H:%M')}")
+    else:
+        st.info("No health record on file yet -- fill in what applies below and save.")
+
+    with st.form("health_record_form"):
+        allergies = st.text_area(
+            "Allergies", value=existing["allergies"] or "",
+            placeholder="e.g., Penicillin, peanuts, pollen...",
+        )
+        chronic_conditions = st.text_area(
+            "Chronic conditions", value=existing["chronic_conditions"] or "",
+            placeholder="e.g., Asthma, hypertension, type 2 diabetes...",
+        )
+        current_medications = st.text_area(
+            "Current medications", value=existing["current_medications"] or "",
+            placeholder="e.g., Metformin 500mg twice daily...",
+        )
+        past_surgeries = st.text_area(
+            "Past surgeries", value=existing["past_surgeries"] or "",
+            placeholder="e.g., Appendectomy (2019)...",
+        )
+        submitted = st.form_submit_button("💾 Save health record")
+
+    if submitted:
+        with get_session() as session:
+            record = session.execute(
+                select(HealthRecord).where(HealthRecord.user_id == user.user_id)
+            ).scalar_one_or_none()
+
+            if record is None:
+                # First time this user saves a health record -> INSERT.
+                record = HealthRecord(
+                    user_id=user.user_id,
+                    allergies=allergies, chronic_conditions=chronic_conditions,
+                    current_medications=current_medications, past_surgeries=past_surgeries,
+                )
+                session.add(record)
+            else:
+                # Already exists -> UPDATE the same row (no duplicates).
+                record.allergies = allergies
+                record.chronic_conditions = chronic_conditions
+                record.current_medications = current_medications
+                record.past_surgeries = past_surgeries
+
+            session.commit()
+        st.success("✅ Health record saved.")
+        st.rerun()
+
+
+# ---------------------------------------------------------------------------
 # Page: AI Predictions
 # ---------------------------------------------------------------------------
 def page_predictions(user):
@@ -382,9 +576,17 @@ def page_predictions(user):
         st.subheader("📊 Real-Dataset Model Predictions")
         st.caption(
             "These predictions come from models trained on real Kaggle datasets "
-            "(see data/README.md), not synthetic data."
+            "(see data/README.md), each chosen as the best of several candidate "
+            "algorithms via 80:20 split + 5-fold cross-validation "
+            "(`python -m ml.evaluate_models`)."
         )
         kcols = st.columns(4)
+
+        def _algo_label(dataset_key):
+            meta = kaggle_models.load_best_model_meta(dataset_key)
+            if not meta:
+                return ""
+            return f"*({meta['best_algorithm']} — {meta['primary_metric']}={meta['primary_metric_value']})*"
 
         if availability["obesity"]:
             result = kaggle_models.predict_obesity_level({
@@ -394,7 +596,7 @@ def page_predictions(user):
             })
             with kcols[0]:
                 st.markdown("**Obesity Level**")
-                st.markdown(f"*(RandomForestClassifier)*")
+                st.markdown(_algo_label("obesity"))
                 st.write(f"**{result['level'].replace('_', ' ')}**")
                 st.caption(f"{int(result['confidence']*100)}% model confidence")
 
@@ -406,7 +608,7 @@ def page_predictions(user):
             })
             with kcols[1]:
                 st.markdown("**Diabetes Risk**")
-                st.markdown(f"*(LogisticRegression)*")
+                st.markdown(_algo_label("diabetes"))
                 st.markdown(f"**{result['level']}** {risk_badge(result['level'])}", unsafe_allow_html=True)
                 st.caption(f"{int(result['probability']*100)}% probability")
 
@@ -418,7 +620,7 @@ def page_predictions(user):
             })
             with kcols[2]:
                 st.markdown("**Sleep Disorder**")
-                st.markdown(f"*(KNeighborsClassifier)*")
+                st.markdown(_algo_label("sleep"))
                 st.write(f"**{result['disorder']}**")
                 st.caption(f"{int(result['confidence']*100)}% model confidence")
 
@@ -429,7 +631,7 @@ def page_predictions(user):
             })
             with kcols[3]:
                 st.markdown("**Calories Burnt / session**")
-                st.markdown(f"*(GradientBoostingRegressor)*")
+                st.markdown(_algo_label("calories"))
                 st.write(f"**{result} kcal**")
                 st.caption(f"for a ~{int(max(10, averages['exercise_minutes']))} min workout")
 
@@ -437,7 +639,7 @@ def page_predictions(user):
         if missing:
             st.info(
                 f"Add the remaining dataset(s) ({', '.join(missing)}) to `data/` and run "
-                f"`python -m ml.train_kaggle_models` to unlock all 4 real-data models. "
+                f"`python -m ml.evaluate_models` to unlock all 4 real-data models. "
                 f"See `data/README.md`."
             )
     else:
@@ -533,6 +735,7 @@ def page_simulation(user):
         fig.add_trace(go.Scatter(x=days, y=base_traj, mode="lines+markers", name="Current path"))
         fig.add_trace(go.Scatter(x=days, y=improved_traj, mode="lines+markers", name="Improved lifestyle"))
         fig.update_layout(title="Projected Weight Trajectory", xaxis_title="Days", yaxis_title="Weight (kg)")
+        style_chart(fig)
         st.plotly_chart(fig, use_container_width=True)
 
         st.info(
@@ -541,6 +744,30 @@ def page_simulation(user):
             f"**{comparison['fitness_score_gain']:+.1f} point** change in fitness score "
             f"over {horizon} days."
         )
+
+        kpreds = improved.get("kaggle_predictions", {})
+        if kpreds:
+            st.subheader("📊 Real-Dataset Model Predictions (improved-lifestyle scenario)")
+            kcols = st.columns(len(kpreds))
+            for col, (name, result) in zip(kcols, kpreds.items()):
+                meta = kaggle_models.load_best_model_meta(name)
+                algo = meta["best_algorithm"] if meta else ""
+                with col:
+                    st.markdown(f"**{name.title()}**")
+                    st.caption(algo)
+                    if name == "obesity":
+                        st.write(f"**{result['level'].replace('_', ' ')}**")
+                    elif name == "diabetes":
+                        st.markdown(f"**{result['level']}** {risk_badge(result['level'])}", unsafe_allow_html=True)
+                    elif name == "sleep":
+                        st.write(f"**{result['disorder']}**")
+                    elif name == "calories":
+                        st.write(f"**{result} kcal**")
+        else:
+            st.caption(
+                "💡 Add the Kaggle datasets and run `python -m ml.evaluate_models` to also see "
+                "real-dataset model predictions for this scenario."
+            )
 
         with get_session() as session:
             session.add(Simulation(
@@ -626,23 +853,27 @@ def page_dashboard(user):
         fig_weight = go.Figure()
         fig_weight.add_trace(go.Scatter(x=df["date"], y=df["weight_kg"], mode="lines+markers", name="Weight"))
         fig_weight.update_layout(title="Weight Over Time (kg)")
+        style_chart(fig_weight)
         st.plotly_chart(fig_weight, use_container_width=True)
 
         fig_sleep = go.Figure()
         fig_sleep.add_trace(go.Bar(x=df["date"], y=df["sleep_hours"], name="Sleep hours"))
         fig_sleep.update_layout(title="Sleep Hours per Day")
+        style_chart(fig_sleep)
         st.plotly_chart(fig_sleep, use_container_width=True)
 
     with c2:
         fig_steps = go.Figure()
         fig_steps.add_trace(go.Bar(x=df["date"], y=df["steps"], name="Steps"))
         fig_steps.update_layout(title="Steps per Day")
+        style_chart(fig_steps)
         st.plotly_chart(fig_steps, use_container_width=True)
 
         fig_cal = go.Figure()
         fig_cal.add_trace(go.Scatter(x=df["date"], y=df["calories_consumed"], mode="lines", name="Consumed"))
         fig_cal.add_trace(go.Scatter(x=df["date"], y=df["calories_burned"], mode="lines", name="Burned (exercise)"))
         fig_cal.update_layout(title="Calories: Consumed vs Burned")
+        style_chart(fig_cal)
         st.plotly_chart(fig_cal, use_container_width=True)
 
     st.subheader("Weekly Summary")
@@ -710,6 +941,7 @@ def main():
 
     if user is None:
         st.session_state.user_id = None
+        st.session_state.session_token = None
         st.rerun()
         return
 
@@ -717,17 +949,23 @@ def main():
     st.sidebar.caption(user.email)
     page = st.sidebar.radio(
         "Navigate",
-        ["Profile & Daily Log", "AI Predictions", "Digital Twin Simulation",
+        ["Profile & Daily Log", "Health Records", "AI Predictions", "Digital Twin Simulation",
          "Recommendations", "Dashboard", "AI Assistant"],
     )
     st.sidebar.markdown("---")
     if st.sidebar.button("🚪 Log out"):
+        if st.session_state.session_token:
+            _SESSION_STORE.pop(st.session_state.session_token, None)
+            if "session" in st.query_params:
+                del st.query_params["session"]
         st.session_state.user_id = None
+        st.session_state.session_token = None
         st.session_state.pop("chat_history", None)
         st.rerun()
 
     pages = {
         "Profile & Daily Log": page_profile_and_log,
+        "Health Records": page_health_records,
         "AI Predictions": page_predictions,
         "Digital Twin Simulation": page_simulation,
         "Recommendations": page_recommendations,
@@ -736,7 +974,7 @@ def main():
     }
     hero_header("Health & Fitness Digital Twin", page)
     pages[page](user)
-    render_footer()
+    render_footer(st.session_state.session_token)
 
 
 if __name__ == "__main__":

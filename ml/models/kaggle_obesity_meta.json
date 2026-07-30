@@ -1,0 +1,24 @@
+{
+  "dataset": "obesity",
+  "best_algorithm": "GradientBoostingClassifier",
+  "primary_metric": "f1_macro",
+  "primary_metric_value": 0.9581,
+  "all_candidates": [
+    {
+      "algorithm": "GradientBoostingClassifier",
+      "cv_f1_macro": 0.9581
+    },
+    {
+      "algorithm": "RandomForestClassifier",
+      "cv_f1_macro": 0.9408
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "cv_f1_macro": 0.8767
+    },
+    {
+      "algorithm": "KNeighborsClassifier",
+      "cv_f1_macro": 0.7877
+    }
+  ]
+}

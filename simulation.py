@@ -15,6 +15,7 @@ from ml.bmi import calculate_bmi, calculate_bmr, calculate_tdee
 from ml.weight_predictor import predict_weight_change
 from ml.fitness_score import calculate_fitness_score
 from ml.risk_classifier import predict_risks
+from ml import kaggle_models
 
 
 def run_simulation(
@@ -66,6 +67,34 @@ def run_simulation(
         avg_sleep_hours=sim_sleep_hours,
     )
 
+    # --- Real-dataset (Kaggle-trained) models, if the user has trained them ---
+    # Uses the SAME projected weight/BMI and simulated habits as inputs, so a
+    # "what-if" scenario reflects the best model available -- not just the
+    # built-in synthetic ones -- exactly like the AI Predictions page does.
+    kaggle_predictions = {}
+    availability = kaggle_models.which_kaggle_models_available()
+
+    if availability.get("obesity"):
+        kaggle_predictions["obesity"] = kaggle_models.predict_obesity_level({
+            "age": age, "height_m": height_cm / 100, "weight_kg": projected_weight,
+            "gender": gender, "faf": min(3, sim_exercise_minutes / 30),
+            "ch2o": min(3, sim_water_liters),
+        })
+    if availability.get("diabetes"):
+        kaggle_predictions["diabetes"] = kaggle_models.predict_diabetes_risk({
+            "age": age, "bmi": projected_bmi, "gender": gender,
+        })
+    if availability.get("sleep"):
+        kaggle_predictions["sleep"] = kaggle_models.predict_sleep_disorder({
+            "age": age, "sleep_hours": sim_sleep_hours, "gender": gender,
+            "exercise_minutes": sim_exercise_minutes, "steps": sim_steps,
+        })
+    if availability.get("calories"):
+        kaggle_predictions["calories"] = kaggle_models.predict_calories_burnt({
+            "age": age, "height_cm": height_cm, "weight_kg": projected_weight,
+            "duration_minutes": max(10, sim_exercise_minutes), "gender": gender,
+        })
+
     return {
         "horizon_days": horizon_days,
         "tdee": round(tdee, 0),
@@ -75,6 +104,7 @@ def run_simulation(
         "projected_bmi": projected_bmi,
         "fitness_score": fitness_score,
         "risks": risks,
+        "kaggle_predictions": kaggle_predictions,
     }
 
 

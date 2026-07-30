@@ -1,32 +1,35 @@
 """
 ml/kaggle_models.py
 --------------------
-Trains four DIFFERENT machine learning models on four DIFFERENT real Kaggle
-datasets, replacing/augmenting the synthetic-data models in weight_predictor.py
-and risk_classifier.py with models trained on real-world data.
+Dataset loading, preprocessing pipelines, CANDIDATE algorithm definitions,
+and inference functions for the 4 real-Kaggle-dataset models.
 
-    Dataset                                   | Algorithm              | Task
-    -------------------------------------------|-------------------------|-------------------------------
-    Obesity Levels (fatemehmehrparvar)         | RandomForestClassifier  | Multi-class obesity level (7 classes)
-    Diabetes Prediction (iammustafatz)          | LogisticRegression      | Binary diabetes risk
-    Sleep Health & Lifestyle (uom190346a)       | KNeighborsClassifier    | Sleep disorder (None/Insomnia/Apnea)
-    Calories Burnt Prediction (ruchikakumbhar)  | GradientBoostingRegressor | Calories burnt during exercise
+For each dataset, SEVERAL different algorithms are defined as candidates.
+The actual comparison, evaluation (80:20 split + 5-fold CV), and selection
+of the best-performing candidate happens in ml/evaluate_models.py, which
+saves the winning pipeline here under a fixed filename (kaggle_<name>_model.pkl)
+plus a small metadata file recording which algorithm won and why -- so the
+rest of the app (predictions, simulation) always uses "whichever model
+tested best" without needing to know which algorithm that turned out to be.
 
 Where to put the downloaded CSV files: see data/README.md. This module reads
 whatever file it finds in data/ that matches expected column names -- it
-does NOT hardcode an exact Kaggle filename, so you can keep the name Kaggle
-gave you. Both .csv and .xlsx are supported.
+does NOT hardcode an exact Kaggle filename. Both .csv and .xlsx are supported.
 """
 
 import os
 import glob
+import json
 import numpy as np
 import pandas as pd
 import joblib
 
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import (
+    RandomForestClassifier, RandomForestRegressor,
+    GradientBoostingClassifier, GradientBoostingRegressor,
+)
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -51,7 +54,6 @@ def _find_dataset(required_columns, filename_hints):
         glob.glob(os.path.join(DATA_DIR, "*.xlsx")) + \
         glob.glob(os.path.join(DATA_DIR, "*.xls"))
 
-    # Prefer filename hints first (faster + avoids accidental column collisions)
     candidates.sort(key=lambda p: not any(h.lower() in os.path.basename(p).lower() for h in filename_hints))
 
     for path in candidates:
@@ -70,7 +72,7 @@ class DatasetNotFoundError(FileNotFoundError):
     pass
 
 
-def _build_pipeline(numeric_cols, categorical_cols, estimator):
+def build_pipeline(numeric_cols, categorical_cols, estimator):
     transformer = ColumnTransformer([
         ("num", Pipeline([
             ("impute", SimpleImputer(strategy="median")),
@@ -85,7 +87,7 @@ def _build_pipeline(numeric_cols, categorical_cols, estimator):
 
 
 # ---------------------------------------------------------------------------
-# 1. Obesity Level Classifier  (RandomForestClassifier, multi-class)
+# 1. Obesity Level  (multi-class: 7 obesity categories)
 # ---------------------------------------------------------------------------
 OBESITY_NUMERIC = ["Age", "Height", "Weight", "FCVC", "NCP", "CH2O", "FAF", "TUE"]
 OBESITY_CATEGORICAL = ["Gender", "family_history_with_overweight", "FAVC", "CAEC",
@@ -105,26 +107,20 @@ def load_obesity_dataset():
     return df, path
 
 
-def build_obesity_pipeline():
-    return _build_pipeline(
-        OBESITY_NUMERIC, OBESITY_CATEGORICAL,
-        RandomForestClassifier(n_estimators=250, max_depth=12, random_state=42, n_jobs=-1),
-    )
-
-
-def train_obesity_model():
-    df, _ = load_obesity_dataset()
-    X = df[OBESITY_NUMERIC + OBESITY_CATEGORICAL]
-    y = df[OBESITY_TARGET]
-    pipe = build_obesity_pipeline()
-    pipe.fit(X, y)
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    joblib.dump(pipe, os.path.join(MODELS_DIR, "kaggle_obesity_model.pkl"))
-    return pipe
+def obesity_candidates():
+    """4 candidate algorithms for the 7-class obesity classification task."""
+    return {
+        "RandomForestClassifier": lambda: RandomForestClassifier(
+            n_estimators=250, max_depth=12, random_state=42, n_jobs=-1),
+        "GradientBoostingClassifier": lambda: GradientBoostingClassifier(
+            n_estimators=150, max_depth=3, random_state=42),
+        "LogisticRegression": lambda: LogisticRegression(max_iter=2000),
+        "KNeighborsClassifier": lambda: KNeighborsClassifier(n_neighbors=9),
+    }
 
 
 # ---------------------------------------------------------------------------
-# 2. Diabetes Risk Classifier  (LogisticRegression, binary)
+# 2. Diabetes Risk  (binary, imbalanced)
 # ---------------------------------------------------------------------------
 DIABETES_NUMERIC = ["age", "bmi", "HbA1c_level", "blood_glucose_level"]
 DIABETES_CATEGORICAL = ["gender", "hypertension", "heart_disease", "smoking_history"]
@@ -143,29 +139,27 @@ def load_diabetes_dataset():
     return df, path
 
 
-def build_diabetes_pipeline():
-    return _build_pipeline(
-        DIABETES_NUMERIC, DIABETES_CATEGORICAL,
-        LogisticRegression(max_iter=1000),
-    )
-
-
-def train_diabetes_model():
-    df, _ = load_diabetes_dataset()
+def prep_diabetes(df):
     df = df.copy()
     df["hypertension"] = df["hypertension"].astype(str)
     df["heart_disease"] = df["heart_disease"].astype(str)
-    X = df[DIABETES_NUMERIC + DIABETES_CATEGORICAL]
-    y = df[DIABETES_TARGET]
-    pipe = build_diabetes_pipeline()
-    pipe.fit(X, y)
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    joblib.dump(pipe, os.path.join(MODELS_DIR, "kaggle_diabetes_model.pkl"))
-    return pipe
+    return df
+
+
+def diabetes_candidates():
+    """4 candidate algorithms for binary diabetes-risk classification."""
+    return {
+        "LogisticRegression": lambda: LogisticRegression(max_iter=2000, class_weight="balanced"),
+        "RandomForestClassifier": lambda: RandomForestClassifier(
+            n_estimators=250, max_depth=10, class_weight="balanced", random_state=42, n_jobs=-1),
+        "GradientBoostingClassifier": lambda: GradientBoostingClassifier(
+            n_estimators=150, max_depth=3, random_state=42),
+        "KNeighborsClassifier": lambda: KNeighborsClassifier(n_neighbors=15),
+    }
 
 
 # ---------------------------------------------------------------------------
-# 3. Sleep Disorder Classifier  (KNeighborsClassifier, multi-class)
+# 3. Sleep Disorder  (multi-class: None / Insomnia / Sleep Apnea)
 # ---------------------------------------------------------------------------
 SLEEP_NUMERIC = ["Age", "Sleep Duration", "Quality of Sleep", "Physical Activity Level",
                   "Stress Level", "Heart Rate", "Daily Steps"]
@@ -185,28 +179,26 @@ def load_sleep_dataset():
     return df, path
 
 
-def build_sleep_pipeline():
-    return _build_pipeline(
-        SLEEP_NUMERIC, SLEEP_CATEGORICAL,
-        KNeighborsClassifier(n_neighbors=9),
-    )
-
-
-def train_sleep_model():
-    df, _ = load_sleep_dataset()
+def prep_sleep(df):
     df = df.copy()
     df[SLEEP_TARGET] = df[SLEEP_TARGET].fillna("None")
-    X = df[SLEEP_NUMERIC + SLEEP_CATEGORICAL]
-    y = df[SLEEP_TARGET]
-    pipe = build_sleep_pipeline()
-    pipe.fit(X, y)
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    joblib.dump(pipe, os.path.join(MODELS_DIR, "kaggle_sleep_model.pkl"))
-    return pipe
+    return df
+
+
+def sleep_candidates():
+    """4 candidate algorithms for the 3-class sleep-disorder task."""
+    return {
+        "KNeighborsClassifier": lambda: KNeighborsClassifier(n_neighbors=9),
+        "RandomForestClassifier": lambda: RandomForestClassifier(
+            n_estimators=200, max_depth=8, random_state=42, n_jobs=-1),
+        "LogisticRegression": lambda: LogisticRegression(max_iter=2000),
+        "GradientBoostingClassifier": lambda: GradientBoostingClassifier(
+            n_estimators=150, max_depth=3, random_state=42),
+    }
 
 
 # ---------------------------------------------------------------------------
-# 4. Calories Burnt Regressor  (GradientBoostingRegressor)
+# 4. Calories Burnt  (regression)
 # ---------------------------------------------------------------------------
 CALORIES_NUMERIC = ["Age", "Height", "Weight", "Duration", "Heart_Rate", "Body_Temp"]
 CALORIES_CATEGORICAL = ["Gender"]
@@ -225,22 +217,101 @@ def load_calories_dataset():
     return df, path
 
 
-def build_calories_pipeline():
-    return _build_pipeline(
-        CALORIES_NUMERIC, CALORIES_CATEGORICAL,
-        GradientBoostingRegressor(n_estimators=200, max_depth=3, random_state=42),
-    )
+def calories_candidates():
+    """4 candidate algorithms for the calories-burnt regression task."""
+    return {
+        "LinearRegression": lambda: LinearRegression(),
+        "KNeighborsRegressor": lambda: KNeighborsRegressor(n_neighbors=9),
+        "RandomForestRegressor": lambda: RandomForestRegressor(
+            n_estimators=250, max_depth=10, random_state=42, n_jobs=-1),
+        "GradientBoostingRegressor": lambda: GradientBoostingRegressor(
+            n_estimators=200, max_depth=3, random_state=42),
+    }
 
 
-def train_calories_model():
-    df, _ = load_calories_dataset()
-    X = df[CALORIES_NUMERIC + CALORIES_CATEGORICAL]
-    y = df[CALORIES_TARGET]
-    pipe = build_calories_pipeline()
-    pipe.fit(X, y)
+# ---------------------------------------------------------------------------
+# Registry -- everything evaluate_models.py needs to run the comparison,
+# keyed by a short dataset name used throughout (obesity/diabetes/sleep/calories).
+# ---------------------------------------------------------------------------
+DATASET_REGISTRY = {
+    "obesity": dict(
+        loader=load_obesity_dataset, prep=None,
+        numeric=OBESITY_NUMERIC, categorical=OBESITY_CATEGORICAL, target=OBESITY_TARGET,
+        task="classification", candidates=obesity_candidates,
+        primary_metric="f1_macro",
+        metric_reason=(
+            "7 obesity classes are not perfectly balanced, and every class matters "
+            "equally (missing 'Obesity Type II' is just as bad as missing 'Normal "
+            "Weight'). Macro-F1 averages the F1 score of EACH class equally, so it "
+            "won't hide poor performance on rarer classes the way plain accuracy can."
+        ),
+    ),
+    "diabetes": dict(
+        loader=load_diabetes_dataset, prep=prep_diabetes,
+        numeric=DIABETES_NUMERIC, categorical=DIABETES_CATEGORICAL, target=DIABETES_TARGET,
+        task="classification", candidates=diabetes_candidates,
+        primary_metric="roc_auc",
+        metric_reason=(
+            "Diabetes is rare in this dataset (~8-9% positive), so a model that "
+            "always predicts 'no diabetes' would still score ~90% accuracy while "
+            "being medically useless. ROC-AUC measures how well the model RANKS "
+            "at-risk people above healthy ones regardless of class imbalance or "
+            "threshold choice, which is what actually matters for a screening tool."
+        ),
+    ),
+    "sleep": dict(
+        loader=load_sleep_dataset, prep=prep_sleep,
+        numeric=SLEEP_NUMERIC, categorical=SLEEP_CATEGORICAL, target=SLEEP_TARGET,
+        task="classification", candidates=sleep_candidates,
+        primary_metric="f1_macro",
+        metric_reason=(
+            "3 classes (None / Insomnia / Sleep Apnea) with 'None' as the majority "
+            "class. Macro-F1 again ensures the two disorder classes -- the ones we "
+            "actually care about catching -- pull equal weight against the healthy "
+            "majority class, instead of being drowned out by it."
+        ),
+    ),
+    "calories": dict(
+        loader=load_calories_dataset, prep=None,
+        numeric=CALORIES_NUMERIC, categorical=CALORIES_CATEGORICAL, target=CALORIES_TARGET,
+        task="regression", candidates=calories_candidates,
+        primary_metric="rmse",
+        metric_reason=(
+            "Calories burnt is a continuous value, so this is regression, not "
+            "classification -- accuracy/F1 don't apply. RMSE is used as the primary "
+            "metric (rather than MAE) because it penalizes large errors more heavily "
+            "than small ones, which fits calorie estimation: being off by 100 kcal "
+            "occasionally is fine, but a model that's wildly wrong sometimes is worse "
+            "than one that's consistently a little off, even at the same average error."
+        ),
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Saving / loading the WINNING model + its metadata (written by evaluate_models.py)
+# ---------------------------------------------------------------------------
+def save_best_model(dataset_key: str, pipeline, algo_name: str, metric_name: str, metric_value: float,
+                     all_results: list):
     os.makedirs(MODELS_DIR, exist_ok=True)
-    joblib.dump(pipe, os.path.join(MODELS_DIR, "kaggle_calories_model.pkl"))
-    return pipe
+    joblib.dump(pipeline, os.path.join(MODELS_DIR, f"kaggle_{dataset_key}_model.pkl"))
+    meta = {
+        "dataset": dataset_key,
+        "best_algorithm": algo_name,
+        "primary_metric": metric_name,
+        "primary_metric_value": round(float(metric_value), 4),
+        "all_candidates": all_results,
+    }
+    with open(os.path.join(MODELS_DIR, f"kaggle_{dataset_key}_meta.json"), "w") as f:
+        json.dump(meta, f, indent=2)
+
+
+def load_best_model_meta(dataset_key: str):
+    path = os.path.join(MODELS_DIR, f"kaggle_{dataset_key}_meta.json")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return json.load(f)
 
 
 # ---------------------------------------------------------------------------
