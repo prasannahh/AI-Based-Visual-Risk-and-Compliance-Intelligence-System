@@ -1,0 +1,5 @@
+.pytest_cache/
+__pycache__/
+.streamlit/
+.venv/
+Milestone2_Project_Presentation.pptx
