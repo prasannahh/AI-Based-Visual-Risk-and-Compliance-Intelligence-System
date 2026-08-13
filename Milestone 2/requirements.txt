@@ -1,0 +1,12 @@
+streamlit>=1.38
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+joblib>=1.4
+pytest>=8.0
+psycopg2-binary>=2.9.9
+plotly>=5.20.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+xgboost>=2.0.0
+imbalanced-learn>=0.11.0

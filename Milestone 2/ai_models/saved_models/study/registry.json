@@ -1,0 +1,16 @@
+{
+  "performance_predictor": {
+    "version": "20260806_235331",
+    "file": "performance_predictor__20260806_235331.joblib",
+    "metrics": {
+      "mae": 4.956718815596564,
+      "mse": 73.51245633243684,
+      "rmse": 8.573940537024784,
+      "r2": 0.8098096611470792,
+      "cv_rmse": 7.371623087246086,
+      "best": 1.0
+    },
+    "records": 1044,
+    "trained_at": "2026-08-06T23:53:31"
+  }
+}
