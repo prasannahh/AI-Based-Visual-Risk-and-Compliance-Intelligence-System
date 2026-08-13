@@ -76,7 +76,7 @@ def render():
                 margin=dict(l=10, r=10, t=10, b=10),
                 height=340,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
         c1, c2, c3 = st.columns(3)
         c1.metric("Current Savings", f"₹{current_savings:,.0f}")
@@ -92,7 +92,7 @@ def render():
             ttype = c2.selectbox("Type", ["Income", "Expense", "Savings"])
             amount = c3.number_input("Amount", min_value=0.0, value=0.0)
             fdate = st.date_input("Date", value=date.today())
-            if st.form_submit_button("Save Entry", use_container_width=True):
+            if st.form_submit_button("Save Entry", width='stretch'):
                 db.add_financial_record(user_id, category, amount, ttype, fdate)
                 flash("Financial record saved.")
                 st.rerun()
@@ -106,7 +106,7 @@ def render():
             display_df = records[["record_id", "category", "amount", "transaction_type", "date"]]
             edited = st.data_editor(
                 display_df,
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
                 disabled=["record_id"],
                 column_config={
@@ -151,7 +151,7 @@ def render():
             st.markdown("**Classify an expense automatically**")
             with st.form("expense_classify_form"):
                 description = st.text_input("Transaction description", placeholder="e.g. 'swiggy dinner' or 'electricity bill'")
-                if st.form_submit_button("Classify", use_container_width=True):
+                if st.form_submit_button("Classify", width='stretch'):
                     if not description:
                         st.error("Please enter a transaction description.")
                     else:
@@ -201,11 +201,11 @@ def render():
                     legend=dict(orientation="h", y=-0.1, x=0.5, xanchor="center", font=dict(color="#000000")),
                     margin=dict(l=20, r=20, t=20, b=40),
                 )
-                st.plotly_chart(pie, use_container_width=True)
+                st.plotly_chart(pie, width='stretch')
                 st.dataframe(
                     analysis["category_wise"].rename(columns={"category": "Spending Reason / Category", "spent": "Amount Spent (₹)"}),
                     hide_index=True,
-                    use_container_width=True,
+                    width='stretch',
                 )
 
                 if not analysis["monthly"].empty:
@@ -245,7 +245,7 @@ def render():
                         ),
                         margin=dict(l=20, r=20, t=20, b=30),
                     )
-                    st.plotly_chart(monthly, use_container_width=True)
+                    st.plotly_chart(monthly, width='stretch')
 
                 ui.safe_log(
                     "spending analysis",
@@ -291,8 +291,8 @@ def render():
                     ),
                     margin=dict(l=20, r=20, t=20, b=30),
                 )
-                st.plotly_chart(bar, use_container_width=True)
-                st.dataframe(savings_forecast, hide_index=True, use_container_width=True)
+                st.plotly_chart(bar, width='stretch')
+                st.dataframe(savings_forecast, hide_index=True, width='stretch')
                 ui.safe_log(
                     "savings prediction",
                     db.log_finance_prediction,
@@ -317,7 +317,7 @@ def render():
             )
             if not budget["category_limits"].empty:
                 st.markdown("**Category-wise budget limits**")
-                st.dataframe(budget["category_limits"], hide_index=True, use_container_width=True)
+                st.dataframe(budget["category_limits"], hide_index=True, width='stretch')
             ui.safe_log(
                 "budget recommendation",
                 db.log_finance_prediction,
@@ -347,7 +347,7 @@ def render():
                             line=dict(color=ui.ACCENT, width=3),
                         )
                     )
-                    st.plotly_chart(line, use_container_width=True)
+                    st.plotly_chart(line, width='stretch')
                     projected_val = balance["predicted_balance"].iloc[-1]
                     st.metric("Projected balance", f"₹{projected_val:,.0f}")
                     ui.safe_log(

@@ -102,7 +102,7 @@ with st.sidebar:
     st.session_state.page = choice
 
     st.divider()
-    if st.button("🚪 Log Out", use_container_width=True):
+    if st.button("🚪 Log Out", width='stretch'):
         logout()
         st.rerun()
 

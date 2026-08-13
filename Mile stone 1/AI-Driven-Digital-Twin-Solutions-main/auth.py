@@ -56,7 +56,7 @@ def render_auth():
                 with st.form("login_form"):
                     email = st.text_input("Email", placeholder="you@example.com")
                     password = st.text_input("Password", type="password", placeholder="Your password")
-                    submitted = st.form_submit_button("Sign In", use_container_width=True)
+                    submitted = st.form_submit_button("Sign In", width='stretch')
                 if submitted:
                     if not email or not password:
                         st.error("Please enter both email and password.")
@@ -68,7 +68,7 @@ def render_auth():
                         else:
                             st.error("Invalid email or password.")
 
-                if st.button("Forgot Password?", key="forgot_pw_link", use_container_width=True):
+                if st.button("Forgot Password?", key="forgot_pw_link", width='stretch'):
                     st.session_state.auth_mode = "ForgotPassword"
                     st.rerun()
 
@@ -82,7 +82,7 @@ def render_auth():
                     occupation = st.text_input("Occupation", placeholder="e.g. Software Engineer")
                     password_r = st.text_input("Password ", type="password", key="reg_pw", placeholder="Create a password")
                     confirm = st.text_input("Confirm Password", type="password", placeholder="Re-enter password")
-                    submitted_r = st.form_submit_button("Create My Digital Twin", use_container_width=True)
+                    submitted_r = st.form_submit_button("Create My Digital Twin", width='stretch')
                 if submitted_r:
                     if not (name and email_r and password_r):
                         st.error("Name, email, and password are required.")
@@ -128,7 +128,7 @@ def _render_forgot_password():
 
             with st.form("forgot_password_form"):
                 reset_email = st.text_input("Registered Email", placeholder="you@example.com")
-                reset_submitted = st.form_submit_button("Reset Password", use_container_width=True)
+                reset_submitted = st.form_submit_button("Reset Password", width='stretch')
 
             if reset_submitted:
                 if not reset_email or "@" not in reset_email:
@@ -139,6 +139,6 @@ def _render_forgot_password():
                     st.success("✅ If this email is registered, a reset link has been sent.")
 
             st.write("")
-            if st.button("⬅️ Back to Login", key="back_to_login", use_container_width=True):
+            if st.button("⬅️ Back to Login", key="back_to_login", width='stretch'):
                 st.session_state.auth_mode = "Login"
                 st.rerun()

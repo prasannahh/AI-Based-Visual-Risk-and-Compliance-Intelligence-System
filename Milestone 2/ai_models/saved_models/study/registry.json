@@ -1,7 +1,7 @@
 {
   "performance_predictor": {
-    "version": "20260806_235331",
-    "file": "performance_predictor__20260806_235331.joblib",
+    "version": "20260813_202607",
+    "file": "performance_predictor__20260813_202607.joblib",
     "metrics": {
       "mae": 4.956718815596564,
       "mse": 73.51245633243684,
@@ -11,6 +11,6 @@
       "best": 1.0
     },
     "records": 1044,
-    "trained_at": "2026-08-06T23:53:31"
+    "trained_at": "2026-08-13T20:26:07"
   }
 }

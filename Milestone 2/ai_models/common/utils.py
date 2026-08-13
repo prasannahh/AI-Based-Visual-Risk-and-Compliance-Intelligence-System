@@ -107,7 +107,14 @@ def load_model(domain: str, name: str) -> tuple[object, dict]:
     path = domain_dir(domain) / meta["file"]
     if not path.exists():
         return None, {}
-    return joblib.load(path), meta
+    try:
+        return joblib.load(path), meta
+    except Exception:
+        # A model pickled by a different library version may no longer
+        # deserialize cleanly (e.g. sklearn upgrades). Treat it as missing so
+        # get_or_train() retrains it with the current environment instead of
+        # crashing the app.
+        return None, {}
 
 
 def model_available(domain: str, name: str) -> bool:

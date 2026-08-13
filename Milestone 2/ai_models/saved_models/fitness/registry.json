@@ -1,7 +1,7 @@
 {
   "fitness_score_predictor": {
-    "version": "20260803_180837",
-    "file": "fitness_score_predictor__20260803_180837.joblib",
+    "version": "20260813_202737",
+    "file": "fitness_score_predictor__20260813_202737.joblib",
     "metrics": {
       "mae": 2.1918049336717633,
       "mse": 7.68492092803621,
@@ -11,21 +11,21 @@
       "best": 1.0
     },
     "records": 5000,
-    "trained_at": "2026-08-03T18:08:37"
+    "trained_at": "2026-08-13T20:27:37"
   },
   "goal_achievement": {
-    "version": "20260803_180901",
-    "file": "goal_achievement__20260803_180901.joblib",
+    "version": "20260813_202815",
+    "file": "goal_achievement__20260813_202815.joblib",
     "metrics": {
       "accuracy": 0.975,
       "precision": 0.9804526748971193,
       "recall": 0.9937434827945777,
       "f1": 0.9870533402382186,
       "roc_auc": 0.9849182329153844,
-      "cv_f1": 0.9893354149890902,
+      "cv_f1": 0.8014759086584128,
       "best": 1.0
     },
     "records": 5000,
-    "trained_at": "2026-08-03T18:09:01"
+    "trained_at": "2026-08-13T20:28:15"
   }
 }

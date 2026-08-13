@@ -1,7 +1,7 @@
 {
   "expense_classifier": {
-    "version": "20260803_181337",
-    "file": "expense_classifier__20260803_181337.joblib",
+    "version": "20260813_202837",
+    "file": "expense_classifier__20260813_202837.joblib",
     "metrics": {
       "accuracy": 1.0,
       "precision": 1.0,
@@ -12,6 +12,6 @@
       "best": 1.0
     },
     "records": 4000,
-    "trained_at": "2026-08-03T18:13:37"
+    "trained_at": "2026-08-13T20:28:37"
   }
 }

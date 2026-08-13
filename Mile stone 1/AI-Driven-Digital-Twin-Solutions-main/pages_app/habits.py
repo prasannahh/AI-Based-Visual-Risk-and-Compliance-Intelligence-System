@@ -56,7 +56,7 @@ def render():
             status = c1.selectbox("Status", ["Done", "Partial", "Missed"])
             completion = c2.slider("Completion rate (%)", 0, 100, 70)
             hdate = st.date_input("Date", value=date.today())
-            if st.form_submit_button("Save Entry", use_container_width=True):
+            if st.form_submit_button("Save Entry", width='stretch'):
                 if habit_name:
                     db.add_habit(user_id, habit_name, status, completion, hdate)
                     flash("Habit entry saved.")
@@ -73,7 +73,7 @@ def render():
             display_df = habits_df[["habit_id", "habit_name", "status", "completion_rate", "date"]]
             edited = st.data_editor(
                 display_df,
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
                 disabled=["habit_id"],
                 column_config={
@@ -190,8 +190,8 @@ def render():
                     st.success(trend["message"])
                 bar = ui.figure(280)
                 bar.add_trace(go.Bar(x=trend["forecast"]["week"], y=trend["forecast"]["predicted_steps"], marker_color=ui.ACCENT))
-                st.plotly_chart(bar, use_container_width=True)
-                st.dataframe(trend["forecast"], hide_index=True, use_container_width=True)
+                st.plotly_chart(bar, width='stretch')
+                st.dataframe(trend["forecast"], hide_index=True, width='stretch')
                 ui.safe_log(
                     "activity trend",
                     db.log_fitness_prediction,

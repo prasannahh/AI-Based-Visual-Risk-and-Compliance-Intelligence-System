@@ -54,7 +54,7 @@ def render():
                     yaxis=dict(color="#000000", tickfont=dict(color="#000000")),
                     margin=dict(l=0, r=0, t=0, b=0), height=160, showlegend=False,
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
                 st.metric("Projected (1yr)", f"₹{projected_1yr:,.0f}")
 
     # --------------------------- Study mini-chart --------------------------- #
@@ -73,7 +73,7 @@ def render():
                     yaxis=dict(color="#000000", tickfont=dict(color="#000000")),
                     margin=dict(l=0, r=0, t=0, b=0), height=160, showlegend=False,
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
                 st.metric("Peak Focus", db.get_peak_focus_time(user_id))
 
     # --------------------------- Habit ring snapshot --------------------------- #

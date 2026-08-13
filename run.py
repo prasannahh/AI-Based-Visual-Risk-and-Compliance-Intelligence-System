@@ -17,12 +17,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-APP_DIR = (
-    PROJECT_ROOT
-    / "Mile stone 1"
-    / "AI-Driven-Digital-Twin-Solutions-main"
-    / "AI-Driven-Digital-Twin-Solutions-main"
-)
+APP_DIR = PROJECT_ROOT / "Mile stone 1" / "AI-Driven-Digital-Twin-Solutions-main"
 AI_CORE = PROJECT_ROOT / "Milestone 2" / "ai_models"
 
 

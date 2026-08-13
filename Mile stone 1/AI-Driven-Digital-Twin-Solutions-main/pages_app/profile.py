@@ -57,11 +57,11 @@ def render():
                             key=f"goal_progress_{g['goal_id']}",
                         )
                         c1, c2 = st.columns(2)
-                        if c1.button("Save", key=f"save_goal_{g['goal_id']}", use_container_width=True):
+                        if c1.button("Save", key=f"save_goal_{g['goal_id']}", width='stretch'):
                             db.update_goal_progress(g["goal_id"], new_val)
                             flash("Goal updated.")
                             st.rerun()
-                        if c2.button("Delete", key=f"del_goal_{g['goal_id']}", use_container_width=True):
+                        if c2.button("Delete", key=f"del_goal_{g['goal_id']}", width='stretch'):
                             db.delete_goal(g["goal_id"])
                             flash("Goal deleted.", "info")
                             st.rerun()
@@ -72,7 +72,7 @@ def render():
                     gtarget = st.number_input("Target amount", min_value=0.0, value=1000.0)
                     gcurrent = st.number_input("Current progress", min_value=0.0, value=0.0)
                     gdate = st.date_input("Target date", value=date.today())
-                    if st.form_submit_button("Add Goal", use_container_width=True):
+                    if st.form_submit_button("Add Goal", width='stretch'):
                         if gname:
                             db.add_goal(user_id, gname, gtarget, gcurrent, gdate)
                             flash("Goal added.")
@@ -102,7 +102,7 @@ def render():
                 ttype = c2.selectbox("Transaction Type", ["Income", "Expense", "Savings"])
                 amount = st.number_input("Amount", min_value=0.0, value=0.0)
                 fdate = st.date_input("Date", value=date.today(), key="fin_date")
-                if st.form_submit_button("Save Entry", use_container_width=True):
+                if st.form_submit_button("Save Entry", width='stretch'):
                     db.add_financial_record(user_id, category, amount, ttype, fdate)
                     flash("Financial record saved.")
                     st.rerun()
@@ -114,7 +114,7 @@ def render():
                 hours = c1.number_input("Hours logged", min_value=0.0, value=1.0, step=0.5)
                 score = c2.number_input("Performance score (0-100)", min_value=0.0, max_value=100.0, value=75.0)
                 sdate = st.date_input("Date", value=date.today(), key="study_date")
-                if st.form_submit_button("Save Entry", use_container_width=True):
+                if st.form_submit_button("Save Entry", width='stretch'):
                     if subject:
                         db.add_study_activity(user_id, subject, hours, score, sdate)
                         flash("Study activity saved.")
@@ -134,7 +134,7 @@ def render():
                 status = c1.selectbox("Status", ["Done", "Partial", "Missed"])
                 completion = c2.slider("Completion rate (%)", 0, 100, 70)
                 hdate = st.date_input("Date", value=date.today(), key="habit_date")
-                if st.form_submit_button("Save Entry", use_container_width=True):
+                if st.form_submit_button("Save Entry", width='stretch'):
                     if habit_name:
                         db.add_habit(user_id, habit_name, status, completion, hdate)
                         flash("Habit entry saved.")
@@ -156,7 +156,7 @@ def render():
         edited = st.data_editor(
             editor_df,
             num_rows="dynamic",
-            use_container_width=True,
+            width='stretch',
             column_config={
                 "activity_name": st.column_config.TextColumn("Activity", required=True),
                 "planned_time": st.column_config.TimeColumn("Planned Time"),
@@ -266,7 +266,7 @@ def render():
             forecast = health_ai.predict_weight_forecast(int(w_age), gender, w_height, w_weight, activity, int(w_calories), days=int(days))
             line = ui.figure(300)
             line.add_trace(go.Scatter(x=forecast["day"], y=forecast["predicted_weight_kg"], mode="lines+markers", line=dict(color=ui.ACCENT, width=3)))
-            st.plotly_chart(line, use_container_width=True)
+            st.plotly_chart(line, width='stretch')
             st.metric("Projected weight", f"{forecast['predicted_weight_kg'].iloc[-1]:.1f} kg")
             if st.button("💾 Log prediction", key="health_w_log"):
                 ui.safe_log(

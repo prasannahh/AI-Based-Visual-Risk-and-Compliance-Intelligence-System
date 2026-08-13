@@ -10,7 +10,7 @@
 #   python run.py
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$appDir = Join-Path $projectRoot "Mile stone 1\AI-Driven-Digital-Twin-Solutions-main\AI-Driven-Digital-Twin-Solutions-main"
+$appDir = Join-Path $projectRoot "Mile stone 1\AI-Driven-Digital-Twin-Solutions-main"
 $aiCore = Join-Path $projectRoot "Milestone 2\ai_models"
 
 if (-not (Test-Path -LiteralPath $appDir)) {

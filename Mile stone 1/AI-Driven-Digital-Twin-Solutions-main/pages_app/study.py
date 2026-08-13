@@ -51,7 +51,7 @@ def render():
                 margin=dict(l=10, r=10, t=10, b=10),
                 height=300,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
         peak_focus = db.get_peak_focus_time(user_id)
         avg_score = float(study_df["performance_score"].astype(float).mean()) if not study_df.empty else 0.0
@@ -71,7 +71,7 @@ def render():
             hours = c1.number_input("Hours logged", min_value=0.0, value=1.0, step=0.5)
             score = c2.number_input("Performance score (0-100)", min_value=0.0, max_value=100.0, value=75.0)
             sdate = st.date_input("Date", value=date.today())
-            if st.form_submit_button("Save Entry", use_container_width=True):
+            if st.form_submit_button("Save Entry", width='stretch'):
                 if subject:
                     db.add_study_activity(user_id, subject, hours, score, sdate)
                     flash("Study activity saved.")
@@ -87,7 +87,7 @@ def render():
             display_df = study_df[["activity_id", "subject", "hours_logged", "performance_score", "date"]]
             edited = st.data_editor(
                 display_df,
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
                 disabled=["activity_id"],
                 column_config={
@@ -176,7 +176,7 @@ def render():
                 xaxis=dict(color="#000000", tickfont=dict(color="#000000"), title_font=dict(color="#000000")),
                 yaxis=dict(range=[0, 100], color="#000000", tickfont=dict(color="#000000"), title_font=dict(color="#000000")),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             if st.button("💾 Log prediction", key="study_ai_predict_log"):
                 ui.safe_log(
@@ -198,7 +198,7 @@ def render():
             else:
                 bar = ui.figure(280)
                 bar.add_trace(go.Bar(x=[w["subject"] for w in weak], y=[w["avg_score"] for w in weak], marker_color=ui.ACCENT))
-                st.plotly_chart(bar, use_container_width=True)
+                st.plotly_chart(bar, width='stretch')
 
                 display_weak = pd.DataFrame(weak)[["rank", "subject", "avg_score", "risk_score", "level", "trend"]]
                 display_weak = display_weak.rename(
@@ -211,7 +211,7 @@ def render():
                         "trend": "Trend (%)",
                     }
                 )
-                st.dataframe(display_weak, hide_index=True, use_container_width=True)
+                st.dataframe(display_weak, hide_index=True, width='stretch')
 
                 weakest = weak[0]
                 st.warning(
@@ -240,13 +240,13 @@ def render():
                 st.markdown(f"**Priority subjects:** {', '.join(plan['priority_subjects']) if plan['priority_subjects'] else 'log study data first'}")
                 if plan["revision_schedule"]:
                     st.markdown("**Revision schedule**")
-                    st.dataframe(pd.DataFrame(plan["revision_schedule"]), hide_index=True, use_container_width=True)
+                    st.dataframe(pd.DataFrame(plan["revision_schedule"]), hide_index=True, width='stretch')
                 if plan["weekly_plan"]:
                     st.markdown("**Weekly plan**")
-                    st.dataframe(pd.DataFrame(plan["weekly_plan"]), hide_index=True, use_container_width=True)
+                    st.dataframe(pd.DataFrame(plan["weekly_plan"]), hide_index=True, width='stretch')
                 if plan["daily_timetable"]:
                     st.markdown("**Daily timetable**")
-                    st.dataframe(pd.DataFrame(plan["daily_timetable"]), hide_index=True, use_container_width=True)
+                    st.dataframe(pd.DataFrame(plan["daily_timetable"]), hide_index=True, width='stretch')
                 st.caption(" • ".join(plan["notes"]))
                 ui.safe_log(
                     "study planner",
@@ -268,8 +268,8 @@ def render():
                 else:
                     bar = ui.figure(280)
                     bar.add_trace(go.Bar(x=opt["subject"], y=opt["recommended_hours"], marker_color=ui.ACCENT))
-                    st.plotly_chart(bar, use_container_width=True)
-                    st.dataframe(opt, hide_index=True, use_container_width=True)
+                    st.plotly_chart(bar, width='stretch')
+                    st.dataframe(opt, hide_index=True, width='stretch')
                     ui.safe_log(
                         "study time optimisation",
                         db.log_study_prediction,
@@ -289,7 +289,7 @@ def render():
             else:
                 bar = ui.figure(280)
                 bar.add_trace(go.Bar(x=trend["horizon_days"].astype(str) + " days", y=trend["predicted_score"], marker_color=ui.ACCENT))
-                st.plotly_chart(bar, use_container_width=True)
+                st.plotly_chart(bar, width='stretch')
                 display_trend = trend.rename(
                     columns={
                         "horizon_days": "Forecast Horizon (days)",
@@ -297,7 +297,7 @@ def render():
                         "predicted_gpa": "Predicted GPA",
                     }
                 )
-                st.dataframe(display_trend, hide_index=True, use_container_width=True)
+                st.dataframe(display_trend, hide_index=True, width='stretch')
                 ui.safe_log(
                     "performance trend",
                     db.log_study_prediction,

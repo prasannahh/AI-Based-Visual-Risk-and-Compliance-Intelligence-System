@@ -1,7 +1,7 @@
 {
   "weight_predictor": {
-    "version": "20260803_180448",
-    "file": "weight_predictor__20260803_180448.joblib",
+    "version": "20260813_202649",
+    "file": "weight_predictor__20260813_202649.joblib",
     "metrics": {
       "mae": 0.06222321160283231,
       "mse": 0.006193328517474988,
@@ -11,11 +11,11 @@
       "best": 1.0
     },
     "records": 5000,
-    "trained_at": "2026-08-03T18:04:48"
+    "trained_at": "2026-08-13T20:26:49"
   },
   "calorie_predictor": {
-    "version": "20260803_180511",
-    "file": "calorie_predictor__20260803_180511.joblib",
+    "version": "20260813_202707",
+    "file": "calorie_predictor__20260813_202707.joblib",
     "metrics": {
       "mae": 57.09443222414324,
       "mse": 5057.671778348121,
@@ -25,11 +25,11 @@
       "best": 1.0
     },
     "records": 3000,
-    "trained_at": "2026-08-03T18:05:11"
+    "trained_at": "2026-08-13T20:27:07"
   },
   "risk_obesity": {
-    "version": "20260806_235209",
-    "file": "risk_obesity__20260806_235209.joblib",
+    "version": "20260813_202238",
+    "file": "risk_obesity__20260813_202238.joblib",
     "metrics": {
       "accuracy": 0.9976303317535545,
       "precision": 0.995049504950495,
@@ -40,11 +40,11 @@
       "best": 1.0
     },
     "records": 2110,
-    "trained_at": "2026-08-06T23:52:09"
+    "trained_at": "2026-08-13T20:22:38"
   },
   "risk_diabetes": {
-    "version": "20260806_235300",
-    "file": "risk_diabetes__20260806_235300.joblib",
+    "version": "20260813_202531",
+    "file": "risk_diabetes__20260813_202531.joblib",
     "metrics": {
       "accuracy": 0.6902892708112314,
       "precision": 0.6717704580545548,
@@ -55,11 +55,11 @@
       "best": 1.0
     },
     "records": 70692,
-    "trained_at": "2026-08-06T23:53:00"
+    "trained_at": "2026-08-13T20:25:31"
   },
   "risk_hypertension": {
-    "version": "20260806_235320",
-    "file": "risk_hypertension__20260806_235320.joblib",
+    "version": "20260813_202556",
+    "file": "risk_hypertension__20260813_202556.joblib",
     "metrics": {
       "accuracy": 0.9269746646795827,
       "precision": 0.9379432624113475,
@@ -70,6 +70,6 @@
       "best": 1.0
     },
     "records": 3352,
-    "trained_at": "2026-08-06T23:53:20"
+    "trained_at": "2026-08-13T20:25:56"
   }
 }
