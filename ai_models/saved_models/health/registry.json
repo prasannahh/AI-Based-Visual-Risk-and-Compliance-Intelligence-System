@@ -1,0 +1,75 @@
+{
+  "weight_predictor": {
+    "version": "20260813_202649",
+    "file": "weight_predictor__20260813_202649.joblib",
+    "metrics": {
+      "mae": 0.06222321160283231,
+      "mse": 0.006193328517474988,
+      "rmse": 0.07869770338119778,
+      "r2": 0.9999731991079766,
+      "cv_rmse": 0.08082623399281867,
+      "best": 1.0
+    },
+    "records": 5000,
+    "trained_at": "2026-08-13T20:26:49"
+  },
+  "calorie_predictor": {
+    "version": "20260813_202707",
+    "file": "calorie_predictor__20260813_202707.joblib",
+    "metrics": {
+      "mae": 57.09443222414324,
+      "mse": 5057.671778348121,
+      "rmse": 71.1173099768834,
+      "r2": 0.9782974727293194,
+      "cv_rmse": 74.98245761188906,
+      "best": 1.0
+    },
+    "records": 3000,
+    "trained_at": "2026-08-13T20:27:07"
+  },
+  "risk_obesity": {
+    "version": "20260818_162959",
+    "file": "risk_obesity__20260818_162959.joblib",
+    "metrics": {
+      "accuracy": 0.973,
+      "precision": 0.909433962264151,
+      "recall": 0.9877049180327869,
+      "f1": 0.9469548133595285,
+      "roc_auc": 0.9974303929221962,
+      "cv_f1": 0.9472733797978495,
+      "best": 1.0
+    },
+    "records": 5000,
+    "trained_at": "2026-08-18T16:29:59"
+  },
+  "risk_diabetes": {
+    "version": "20260818_163016",
+    "file": "risk_diabetes__20260818_163016.joblib",
+    "metrics": {
+      "accuracy": 0.94,
+      "precision": 0.8767908309455588,
+      "recall": 0.9473684210526315,
+      "f1": 0.9107142857142857,
+      "roc_auc": 0.9900444046078355,
+      "cv_f1": 0.9495235192948256,
+      "best": 1.0
+    },
+    "records": 5000,
+    "trained_at": "2026-08-18T16:30:16"
+  },
+  "risk_hypertension": {
+    "version": "20260818_163031",
+    "file": "risk_hypertension__20260818_163031.joblib",
+    "metrics": {
+      "accuracy": 0.942,
+      "precision": 0.9468503937007874,
+      "recall": 0.939453125,
+      "f1": 0.9431372549019608,
+      "roc_auc": 0.9889576396004098,
+      "cv_f1": 0.9378985281946033,
+      "best": 1.0
+    },
+    "records": 5000,
+    "trained_at": "2026-08-18T16:30:31"
+  }
+}
