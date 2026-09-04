@@ -1,12 +1,27 @@
+# Core application
 streamlit>=1.38
 pandas>=2.2
 numpy>=1.26
 scikit-learn>=1.5
 joblib>=1.4
-pytest>=8.0
 psycopg2-binary>=2.9.9
 plotly>=5.20.0
 scipy>=1.10.0
 matplotlib>=3.7.0
 xgboost>=2.0.0
 imbalanced-learn>=0.11.0
+
+# Testing
+pytest>=8.0
+
+# -----------------------------------------------------------------------------
+# Conversational AI (Milestone 4). These are OPTIONAL:
+#   - The app runs fully with the built-in "rule_based" assistant using only the
+#     core dependencies above (no API key needed).
+#   - Install the dependency matching your chosen LLM_PROVIDER to use a real LLM.
+# -----------------------------------------------------------------------------
+# Gemini provider (LLM_PROVIDER=gemini) - PRIMARY AI:
+google-genai>=2.0.0
+
+# Optional: load .env files (the app also reads plain environment variables)
+# python-dotenv>=1.0
