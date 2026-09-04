@@ -357,10 +357,15 @@ def get_days_active(user_id) -> int:
 def add_financial_record(user_id, category, amount, transaction_type, date_):
     with get_cursor(commit=True) as cur:
         cur.execute(
-            """INSERT INTO Financial_Records (user_id, category, amount, transaction_type, date)
-               VALUES (%s,%s,%s,%s,%s);""",
+            """
+            INSERT INTO Financial_Records
+                (user_id, category, amount, transaction_type, date)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING record_id;
+            """,
             (user_id, category, amount, transaction_type, date_),
         )
+        return cur.fetchone()["record_id"]
 
 
 def get_financial_records(user_id) -> pd.DataFrame:
@@ -515,6 +520,71 @@ def delete_goal(goal_id):
 # --------------------------------------------------------------------------- #
 # Daily Schedule
 # --------------------------------------------------------------------------- #
+def add_schedule_item(
+    user_id,
+    date_,
+    activity_name,
+    planned_time=None,
+    actual_time=None,
+    status="Upcoming",
+):
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            """
+            INSERT INTO Daily_Schedule
+                (user_id, activity_name, planned_time, actual_time, status, date)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING schedule_id;
+            """,
+            (
+                user_id,
+                activity_name,
+                planned_time or None,
+                actual_time or None,
+                status or "Upcoming",
+                date_,
+            ),
+        )
+        return cur.fetchone()["schedule_id"]
+    
+def update_schedule_item(
+    schedule_id,
+    user_id,
+    activity_name=None,
+    planned_time=None,
+    actual_time=None,
+    status=None,
+    date_=None,
+):
+    fields = {}
+
+    if activity_name is not None:
+        fields["activity_name"] = activity_name
+    if planned_time is not None:
+        fields["planned_time"] = planned_time
+    if actual_time is not None:
+        fields["actual_time"] = actual_time
+    if status is not None:
+        fields["status"] = status
+    if date_ is not None:
+        fields["date"] = date_
+
+    if not fields:
+        return False
+
+    set_clause = ", ".join(f"{key} = %s" for key in fields)
+
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            f"""
+            UPDATE Daily_Schedule
+            SET {set_clause}
+            WHERE schedule_id = %s AND user_id = %s;
+            """,
+            (*fields.values(), schedule_id, user_id),
+        )
+        return cur.rowcount > 0
+    
 def get_schedule(user_id, date_) -> pd.DataFrame:
     with get_cursor() as cur:
         cur.execute(

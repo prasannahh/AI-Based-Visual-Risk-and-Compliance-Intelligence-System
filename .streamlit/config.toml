@@ -1,0 +1,23 @@
+# .streamlit/config.toml
+# Streamlit configuration for Digital Twin AI.
+
+[server]
+# Bind to all interfaces for remote/container access (default localhost).
+headless = false
+maxUploadSize = 5
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#22d3ee"
+backgroundColor = "#0a101c"
+secondaryBackgroundColor = "#0d1626"
+textColor = "#e8eef7"
+font = "sans serif"
+
+[client]
+# Do not show raw Python tracebacks to end users (production safety).
+showErrorDetails = "none"
+toolbarMode = "minimal"

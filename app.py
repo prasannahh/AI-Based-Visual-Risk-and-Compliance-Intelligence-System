@@ -82,6 +82,7 @@ NAV_ITEMS = {
     "Study & Productivity": "📚",
     "Habit Tracker": "✅",
     "Digital Twin Simulation": "🧬",
+    "Conversational AI": "💬",
 }
 
 with st.sidebar:
@@ -140,5 +141,8 @@ elif st.session_state.page == "Habit Tracker":
 elif st.session_state.page == "Digital Twin Simulation":
     from pages_app import simulation
     simulation.render()
+elif st.session_state.page == "Conversational AI":
+    from pages_app import ai_chat
+    ai_chat.render()
 
 render_footer()

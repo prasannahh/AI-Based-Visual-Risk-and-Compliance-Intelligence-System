@@ -28,8 +28,8 @@
     "trained_at": "2026-08-13T20:27:07"
   },
   "risk_obesity": {
-    "version": "20260818_162959",
-    "file": "risk_obesity__20260818_162959.joblib",
+    "version": "20260903_155917",
+    "file": "risk_obesity__20260903_155917.joblib",
     "metrics": {
       "accuracy": 0.973,
       "precision": 0.909433962264151,
@@ -40,36 +40,36 @@
       "best": 1.0
     },
     "records": 5000,
-    "trained_at": "2026-08-18T16:29:59"
+    "trained_at": "2026-09-03T15:59:17"
   },
   "risk_diabetes": {
-    "version": "20260818_163016",
-    "file": "risk_diabetes__20260818_163016.joblib",
+    "version": "20260903_155926",
+    "file": "risk_diabetes__20260903_155926.joblib",
     "metrics": {
-      "accuracy": 0.94,
-      "precision": 0.8767908309455588,
-      "recall": 0.9473684210526315,
-      "f1": 0.9107142857142857,
-      "roc_auc": 0.9900444046078355,
-      "cv_f1": 0.9495235192948256,
+      "accuracy": 0.959,
+      "precision": 0.9519230769230769,
+      "recall": 0.9195046439628483,
+      "f1": 0.9354330708661417,
+      "roc_auc": 0.9925001486251035,
+      "cv_f1": 0.9463877522985428,
       "best": 1.0
     },
     "records": 5000,
-    "trained_at": "2026-08-18T16:30:16"
+    "trained_at": "2026-09-03T15:59:26"
   },
   "risk_hypertension": {
-    "version": "20260818_163031",
-    "file": "risk_hypertension__20260818_163031.joblib",
+    "version": "20260903_155934",
+    "file": "risk_hypertension__20260903_155934.joblib",
     "metrics": {
-      "accuracy": 0.942,
-      "precision": 0.9468503937007874,
-      "recall": 0.939453125,
-      "f1": 0.9431372549019608,
-      "roc_auc": 0.9889576396004098,
-      "cv_f1": 0.9378985281946033,
+      "accuracy": 0.948,
+      "precision": 0.94921875,
+      "recall": 0.94921875,
+      "f1": 0.94921875,
+      "roc_auc": 0.9910508452868853,
+      "cv_f1": 0.9428984025422512,
       "best": 1.0
     },
     "records": 5000,
-    "trained_at": "2026-08-18T16:30:31"
+    "trained_at": "2026-09-03T15:59:34"
   }
 }

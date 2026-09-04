@@ -1,2 +1,19 @@
-.pytest_cache/
+# Python
 __pycache__/
+.pytest_cache/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Environment / secrets - NEVER commit these
+.env
+.env.local
+.env.*.local
+.streamlit/secrets.toml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

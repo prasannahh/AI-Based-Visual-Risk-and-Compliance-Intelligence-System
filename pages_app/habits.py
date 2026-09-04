@@ -35,6 +35,20 @@ def render():
 
     with st.container(border=True):
         st.markdown("#### 🔮 Habit Predictions")
+        st.markdown(
+            """
+            <style>
+            div[data-testid="stProgress"]:has(p) > div[data-baseweb="progress-bar"] > div {
+                background: transparent;
+                box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+            }
+            div[data-testid="stProgress"]:has(p) > div[data-baseweb="progress-bar"] > div > div > div {
+                background: linear-gradient(90deg, #6366F1 0%, #8B5CF6 100%);
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
         cols = st.columns(2)
         for i, category in enumerate(display_categories):
             pred = db.get_habit_prediction_by_name(user_id, category)
