@@ -330,3 +330,12 @@ CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0"]
 - `google-genai` SDK versions may vary; if the Gemini
   provider is selected without an installed SDK, the app reports the missing
   dependency and uses the built-in assistant as fallback.
+
+
+  #👥 Team Members
+
+ Prasanna Sankar B
+ Chitrita Bhatacharjee 
+ Gadde Rohit Kumar 
+ Hema Sri B
+ Ganesh Dhakad
