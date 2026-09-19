@@ -332,10 +332,10 @@ CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0"]
   dependency and uses the built-in assistant as fallback.
 
 
-  #👥 Team Members
+#  👥 Team Members
 
- Prasanna Sankar B
- Chitrita Bhatacharjee 
- Gadde Rohit Kumar 
- Hema Sri B
- Ganesh Dhakad
+* Prasanna Sankar B
+* Chitrita Bhatacharjee 
+* Gadde Rohit Kumar 
+* Hema Sri B
+* Ganesh Dhakad
