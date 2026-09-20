@@ -112,6 +112,16 @@ CREATE TABLE IF NOT EXISTS Financial_Records (
     date DATE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS User_Settings (
+    user_id INT PRIMARY KEY REFERENCES Users(user_id) ON DELETE CASCADE,
+    currency VARCHAR(10) DEFAULT 'INR',
+    timezone VARCHAR(60) DEFAULT 'Asia/Kolkata',
+    date_format VARCHAR(20) DEFAULT 'YYYY-MM-DD',
+    theme VARCHAR(20) DEFAULT 'light',
+    ai_suggestions_enabled BOOLEAN DEFAULT TRUE,
+    weekly_digest_enabled BOOLEAN DEFAULT FALSE
+);
+
 CREATE TABLE IF NOT EXISTS Study_Activities (
     activity_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
@@ -331,6 +341,57 @@ def update_user_profile(user_id, **fields):
             f"UPDATE Users SET {cols} WHERE user_id = %s;",
             (*fields.values(), user_id),
         )
+
+
+# --------------------------------------------------------------------------- #
+# User Settings & Preferences
+# --------------------------------------------------------------------------- #
+DEFAULT_USER_SETTINGS = {
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "date_format": "YYYY-MM-DD",
+    "theme": "light",
+    "ai_suggestions_enabled": True,
+    "weekly_digest_enabled": False,
+}
+
+
+def get_user_settings(user_id):
+    """Return the user's preferences dict, seeding from defaults if absent."""
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM User_Settings WHERE user_id = %s;", (user_id,))
+        row = cur.fetchone()
+    if row:
+        return {k: row[k] for k in DEFAULT_USER_SETTINGS}
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            """INSERT INTO User_Settings (user_id)
+               VALUES (%s) RETURNING *;""",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        return {k: row[k] for k in DEFAULT_USER_SETTINGS}
+
+
+def update_user_settings(user_id, **fields):
+    """Partial update of a user's preferences; missing fields keep their values."""
+    valid = set(DEFAULT_USER_SETTINGS.keys())
+    updates = {k: v for k, v in fields.items() if k in valid}
+    if not updates:
+        return get_user_settings(user_id)
+    cols = ", ".join(f"{k} = %s" for k in updates)
+    keys = ", ".join(updates.keys())
+    placeholders = ", ".join("%s" for _ in updates)
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            f"""INSERT INTO User_Settings (user_id, {keys})
+                VALUES (%s, {placeholders})
+                ON CONFLICT (user_id) DO UPDATE SET {cols}
+                RETURNING *;""",
+            (user_id, *updates.values(), *updates.values()),
+        )
+        row = cur.fetchone()
+        return {k: row[k] for k in DEFAULT_USER_SETTINGS}
 
 
 def get_days_active(user_id) -> int:
